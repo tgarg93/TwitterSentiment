@@ -26,6 +26,9 @@ tweetMap = dict()
 # Map of user, u, to list of users, v, who have ever retweeted any of u's tweets
 retweetMap = dict()
 
+positive_words = []
+negative_words = []
+
 def populatePresidentialCandidates():
     # Republican candidates
     politicianScreeNames["Donal Trump"] = "@realDonaldTrump"
@@ -120,13 +123,45 @@ def find_relevant_tweets(screen_name):
                         if token.startswith(temp_screen_name) and temp_screen_name != screen_name:
                             relevant = True
             if relevant:
-                relevant_tweets.append(text)
+                relevant_tweets.append(tokens)
                 relevant = False
 
     return relevant_tweets
 
+def strip_relevant_tweets(relevant_tweets):
+    stripped_relevant_tweets = []
+    for relevant_tweet in relevant_tweets:
+        stripped_relevant_tweet = []
+        for token in relevant_tweet:
+            if not token.startswith("@") and "https" not in token:
+                token = token.replace(",", "")
+                token = token.replace(".", "")
+                stripped_relevant_tweet.append(token)
+        stripped_relevant_tweets.append(stripped_relevant_tweet)
+    return stripped_relevant_tweets
 
 
+def populate_positive_words():
+    with open('positive-words.txt', 'rb') as input:
+        for line in input:
+            positive_words.append(line.strip())
+
+
+def populate_negative_words():
+    with open('negative-words.txt', 'rb') as input:
+        for line in input:
+            negative_words.append(line.strip())
+
+
+def compute_sentiment_score(stripped_relevant_tweets):
+    for stripped_relevant_tweet in stripped_relevant_tweets:
+        sentiment_score = 0
+        for word in stripped_relevant_tweet:
+            if word in positive_words:
+                sentiment_score += 2
+            if word in negative_words:
+                sentiment_score -= 2
+        print stripped_relevant_tweet, sentiment_score
 
 
 if __name__ == '__main__':
@@ -134,5 +169,9 @@ if __name__ == '__main__':
     #for name, screen_name in politicianScreeNames.iteritems():
     #    populate_tweets(screen_name)
     #populate_retweets()
+
+    populate_positive_words()
+    populate_negative_words()
     relevant_tweets = find_relevant_tweets("@BernieSanders")
-    print relevant_tweets
+    stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
+    compute_sentiment_score(stripped_relevant_tweets)
