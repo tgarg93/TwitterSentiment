@@ -3,6 +3,7 @@ __author__ = 'tushar'
 import tweepy
 import json
 import csv
+import time
 
 credentials = json.loads(open("credentials.json").read())
 
@@ -42,7 +43,7 @@ def populatePresidentialCandidates():
     politicianScreeNames["Elizabeth Warren"] = "@SenWarren"
 
 
-def populateTweets(screen_name):
+def populate_tweets(screen_name):
     tweets = []
 
     iter_tweets = api.user_timeline(screen_name=screen_name, count=200)
@@ -67,54 +68,71 @@ def populateTweets(screen_name):
         print "...%s tweets downloaded so far" % len(tweets)
 
     # Transform the tweepy tweets into a 2D array that will populate the csv
-    transformed_tweets = [[tweet.id_str, tweet.created_at, tweet.text.encode("utf-8")] for tweet in tweets]
+    transformed_tweets = [[tweet.id_str, screen_name, tweet.created_at, tweet.text.encode("utf-8")] for tweet in tweets]
 
     # Write the csv
     with open('%s_tweets.csv' % screen_name, 'wb') as f:
         writer = csv.writer(f)
-        writer.writerow(["ID", "Created_at", "Text"])
+        writer.writerow(["ID", "Screen Name", "Created_at", "Text"])
         writer.writerows(transformed_tweets)
     pass
 
+def populate_retweets():
+    with open('retweetMapping.csv', 'a') as output:
+        writer = csv.writer(output)
+        #writer.writerow(["Author", "Retweeter"])
+        for screen_name in ["@SenatorReid", "@SenWarren"]:
+            with open('%s_tweets.csv' % screen_name, 'rb') as input:
+                reader = csv.reader(input)
+                reader.next()
+                for row in reader:
+                    id = row[0]
+                    # TODO: Figure out how to get more than just 100 retweets (limit for API call)
+                    try:
+                        print "Back to getting retweets"
+                        time.sleep(11)
+                        retweets = api.retweets(id)
+                        for retweet in retweets:
+                            retweeter_screen_name = retweet.author.screen_name.encode("utf-8")
+                            print retweeter_screen_name
+                            writer.writerow([screen_name, retweeter_screen_name])
+                    except tweepy.TweepError:
+                        print "Going to sleep for 15 minutes"
+                        time.sleep(10)
+                        continue
+
+    pass
+
+def find_relevant_tweets(screen_name):
+    relevant_tweets = []
+    with open('%s_tweets.csv' % screen_name, 'rb') as input:
+        reader = csv.reader(input)
+        reader.next()
+        relevant = False
+        for row in reader:
+            text = row[-1]
+            tokens = text.split(" ")
+            for token in tokens:
+                if token.startswith("RT"):
+                    break
+                if token.startswith("@"):
+                    for name, temp_screen_name in politicianScreeNames.iteritems():
+                        if token.startswith(temp_screen_name) and temp_screen_name != screen_name:
+                            relevant = True
+            if relevant:
+                relevant_tweets.append(text)
+                relevant = False
+
+    return relevant_tweets
+
+
+
+
+
 if __name__ == '__main__':
     populatePresidentialCandidates()
-
-    for name, screen_name in politicianScreeNames.iteritems():
-        # Used once to download all tweets by politicians
-        # populateTweets(screen_name)
-        with open('%s_tweets.csv' % screen_name, 'rb') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                print row
-
-
-
-
-
-
-
-
-
-
-    #     # # for now just the first person
-    #     # if count == 0:
-    #     tweets = api.user_timeline(screen_name=screen_name, count=200)
-    #     for tweet in tweets:
-    #         #print name, tweet.text.encode("utf-8")
-    #         retweets = api.retweets(tweet.id)
-    #         for retweet in retweets:
-    #             retweeter_screen_name = retweet.author.screen_name.encode("utf-8")
-    #             #print retweeter_screen_name
-    #
-    #             if screen_name in retweetMap:
-    #                 prevList = retweetMap[screen_name]
-    #                 if retweeter_screen_name not in prevList:
-    #                     newList = prevList
-    #                     newList.append(retweeter_screen_name)
-    #                     retweetMap[screen_name] = newList
-    #             else:
-    #                 retweetMap[screen_name] = [retweeter_screen_name]
-    #     count += 1
-    #
-    # for screen_name, list in retweetMap.iteritems():
-    #     print screen_name, list
+    #for name, screen_name in politicianScreeNames.iteritems():
+    #    populate_tweets(screen_name)
+    #populate_retweets()
+    relevant_tweets = find_relevant_tweets("@BernieSanders")
+    print relevant_tweets
