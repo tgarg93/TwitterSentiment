@@ -36,7 +36,7 @@ def populatePresidentialCandidates():
     politicianScreeNames["John Kasich"] = "@JohnKasich"
     # Democratic candidates
     politicianScreeNames["Bernie Sanders"] = "@BernieSanders"
-    politicianScreeNames["Hilary Clinton"] = "@HilaryClinton"
+    politicianScreeNames["Hillary Clinton"] = "@HillaryClinton"
     # Other important politicians
     politicianScreeNames["Barack Obama"] = "@BarackObama"
     politicianScreeNames["Paul Ryan"] = "@SpeakerRyan"
