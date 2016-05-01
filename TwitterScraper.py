@@ -166,12 +166,12 @@ def compute_sentiment_score(stripped_relevant_tweets):
 
 if __name__ == '__main__':
     populatePresidentialCandidates()
-    #for name, screen_name in politicianScreeNames.iteritems():
-    #    populate_tweets(screen_name)
-    #populate_retweets()
+    for name, screen_name in politicianScreeNames.iteritems():
+        populate_tweets(screen_name)
+    populate_retweets()
 
-    populate_positive_words()
-    populate_negative_words()
-    relevant_tweets = find_relevant_tweets("@BernieSanders")
-    stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
-    compute_sentiment_score(stripped_relevant_tweets)
+    #populate_positive_words()
+    #populate_negative_words()
+    #relevant_tweets = find_relevant_tweets("@BernieSanders")
+    #stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
+    #compute_sentiment_score(stripped_relevant_tweets)
