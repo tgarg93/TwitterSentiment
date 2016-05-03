@@ -1,9 +1,12 @@
+from __future__ import division
 __author__ = 'tushar'
 
 import tweepy
 import json
 import csv
 import time
+import itertools
+import copy
 
 credentials = json.loads(open("credentials.json").read())
 
@@ -26,6 +29,10 @@ tweetMap = dict()
 # Map of user, u, to list of users, v, who have ever retweeted any of u's tweets
 retweetMap = dict()
 
+# Directional graph of politician relationship
+pol_network = dict()
+
+
 positive_words = []
 negative_words = []
 
@@ -39,11 +46,14 @@ def populatePresidentialCandidates():
     politicianScreeNames["Hillary Clinton"] = "@HillaryClinton"
     # Other important politicians
     politicianScreeNames["Barack Obama"] = "@BarackObama"
+    politicianScreeNames["Joe Biden"] = "@JoeBiden"
     politicianScreeNames["Paul Ryan"] = "@SpeakerRyan"
     politicianScreeNames["Nancy Pelosi"] = "@NancyPelosi"
     politicianScreeNames["Lindsey Graham"] = "@GrahamBlog"
     politicianScreeNames["Harry Reid"] = "@SenatorReid"
     politicianScreeNames["Elizabeth Warren"] = "@SenWarren"
+    politicianScreeNames["Mitch McConnell"] = "@McConnellPress"
+    politicianScreeNames["Harry Reid"] = "@SenatorReid"
 
 
 def populate_tweets(screen_name):
@@ -164,11 +174,53 @@ def compute_sentiment_score(stripped_relevant_tweets):
         print stripped_relevant_tweet, sentiment_score
 
 
+def create_map(politicians):
+    pairwise_pol = itertools.combinations(politicians, 2)
+    for pol_a, pol_b in pairwise_pol:
+        print "Checking", pol_a, pol_b
+
+        friendship = api.show_friendship(source_screen_name=pol_a, 
+            target_screen_name=pol_b)
+
+        if friendship[0].following:
+            if pol_a in pol_network:
+                pol_network[pol_a] = pol_network[pol_a] + [pol_b]
+            else:
+                pol_network[pol_a] = [pol_b]
+        if friendship[0].followed_by:
+            if pol_b in pol_network:
+                pol_network[pol_b] = pol_network[pol_b] + [pol_a]
+            else:
+                pol_network[pol_b] = [pol_a]
+
+
+def rank_politicians(politicians, iterations, damping):
+    pol_rank = dict()
+    for x in politicians:
+        pol_rank[x] = 1
+
+    for x in xrange(0, iterations):
+        pol_rank_temp = copy.deepcopy(pol_rank)
+        for x in pol_rank:
+            pol_rank[x] = (1.0 - damping) / len(politicians)
+        for pol in politicians:
+            if pol in pol_network:
+                tot_followed = len(pol_network[pol])
+                split = pol_rank_temp[pol] / tot_followed
+                for neighbor in pol_network[pol]:
+                    pol_rank[neighbor] = pol_rank[neighbor] + damping * split
+
+    final_rankings = sorted(pol_rank.items(), key=lambda x: x[1])
+    return final_rankings[::-1]
+
 if __name__ == '__main__':
     populatePresidentialCandidates()
-    for name, screen_name in politicianScreeNames.iteritems():
-        populate_tweets(screen_name)
-    populate_retweets()
+    #for name, screen_name in politicianScreeNames.iteritems():
+        #populate_tweets(screen_name)
+    #populate_retweets()
+    politicians = [y for x, y in politicianScreeNames.iteritems()]
+    create_map(politicians)
+    print rank_politicians(politicians, 10, 0.85)
 
     #populate_positive_words()
     #populate_negative_words()
