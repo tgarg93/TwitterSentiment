@@ -32,6 +32,9 @@ retweetMap = dict()
 # Directional graph of politician relationship
 pol_network = dict()
 
+# Ranking of politicians
+pol_rank = dict()
+
 
 positive_words = []
 negative_words = []
@@ -81,12 +84,12 @@ def populate_tweets(screen_name):
         print "...%s tweets downloaded so far" % len(tweets)
 
     # Transform the tweepy tweets into a 2D array that will populate the csv
-    transformed_tweets = [[tweet.id_str, screen_name, tweet.created_at, tweet.text.encode("utf-8")] for tweet in tweets]
+    transformed_tweets = [[tweet.id_str, screen_name, tweet.created_at, tweet.favorite_count, tweet.retweet_count, tweet.text.encode("utf-8")] for tweet in tweets]
 
     # Write the csv
     with open('%s_tweets.csv' % screen_name, 'wb') as f:
         writer = csv.writer(f)
-        writer.writerow(["ID", "Screen Name", "Created_at", "Text"])
+        writer.writerow(["ID", "Screen Name", "Created_at", "Favorite Count", "Retweet Count", "Text"])
         writer.writerows(transformed_tweets)
     pass
 
@@ -195,7 +198,6 @@ def create_map(politicians):
 
 
 def rank_politicians(politicians, iterations, damping):
-    pol_rank = dict()
     for x in politicians:
         pol_rank[x] = 1
 
@@ -215,13 +217,18 @@ def rank_politicians(politicians, iterations, damping):
 
 if __name__ == '__main__':
     populatePresidentialCandidates()
-    #for name, screen_name in politicianScreeNames.iteritems():
-        #populate_tweets(screen_name)
-    #populate_retweets()
-    politicians = [y for x, y in politicianScreeNames.iteritems()]
-    create_map(politicians)
-    print rank_politicians(politicians, 10, 0.85)
 
+    # Find retweets
+    for name, screen_name in politicianScreeNames.iteritems():
+        populate_tweets(screen_name)
+    populate_retweets()
+
+    # Rank politicians
+    #politicians = [y for x, y in politicianScreeNames.iteritems()]
+    #create_map(politicians)
+    #print rank_politicians(politicians, 10, 0.85)
+
+    # Populate words
     #populate_positive_words()
     #populate_negative_words()
     #relevant_tweets = find_relevant_tweets("@BernieSanders")
