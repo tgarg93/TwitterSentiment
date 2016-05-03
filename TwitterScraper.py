@@ -7,6 +7,7 @@ import csv
 import time
 import itertools
 import copy
+from textblob import TextBlob
 
 credentials = json.loads(open("credentials.json").read())
 
@@ -149,7 +150,7 @@ def strip_relevant_tweets(relevant_tweets):
             if not token.startswith("@") and "https" not in token:
                 token = token.replace(",", "")
                 token = token.replace(".", "")
-                stripped_relevant_tweet.append(token)
+                stripped_relevant_tweet.append(token.strip())
         stripped_relevant_tweets.append(stripped_relevant_tweet)
     return stripped_relevant_tweets
 
@@ -164,6 +165,12 @@ def populate_negative_words():
     with open('negative-words.txt', 'rb') as input:
         for line in input:
             negative_words.append(line.strip())
+
+def form_sentence(tokens):
+    sentence = ""
+    for token in tokens:
+        sentence += " " + token
+    return sentence
 
 
 def compute_sentiment_score(stripped_relevant_tweets):
@@ -219,9 +226,9 @@ if __name__ == '__main__':
     populatePresidentialCandidates()
 
     # Find retweets
-    for name, screen_name in politicianScreeNames.iteritems():
-        populate_tweets(screen_name)
-    populate_retweets()
+    #for name, screen_name in politicianScreeNames.iteritems():
+    #    populate_tweets(screen_name)
+    #populate_retweets()
 
     # Rank politicians
     #politicians = [y for x, y in politicianScreeNames.iteritems()]
@@ -229,8 +236,17 @@ if __name__ == '__main__':
     #print rank_politicians(politicians, 10, 0.85)
 
     # Populate words
-    #populate_positive_words()
-    #populate_negative_words()
-    #relevant_tweets = find_relevant_tweets("@BernieSanders")
-    #stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
+    populate_positive_words()
+    populate_negative_words()
+    relevant_tweets = find_relevant_tweets("@BernieSanders")
+    stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
+    sentiments = []
+    for tweet in stripped_relevant_tweets:
+        sentence = form_sentence(tweet).decode('utf-8')
+        textblob = TextBlob(sentence)
+        sentiment = textblob.sentiment.polarity
+        sentiments.append([sentence, sentiment])
+    ranked_sentiments = sorted(sentiments, key=lambda x: x[1])
+    print ranked_sentiments
+
     #compute_sentiment_score(stripped_relevant_tweets)
