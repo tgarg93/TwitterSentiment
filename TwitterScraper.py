@@ -125,7 +125,26 @@ def find_relevant_tweets(screen_name):
     with open('%s_tweets.csv' % screen_name, 'rb') as input:
         reader = csv.reader(input)
         reader.next()
-        relevant = False
+        relevant = True
+        for row in reader:
+            text = row[-1]
+            tokens = text.split(" ")
+            for token in tokens:
+                if token.startswith("RT"):
+                    relevant = False
+            if relevant:
+                relevant_tweets.append((row[0], float(row[3]) + float(row[4]), tokens))
+            relevant = True
+
+    return relevant_tweets
+
+
+def find_mention_tweets(screen_name):
+    mention_tweets = []
+    with open('%s_tweets.csv' % screen_name, 'rb') as input:
+        reader = csv.reader(input)
+        reader.next()
+        mention = False
         for row in reader:
             text = row[-1]
             tokens = text.split(" ")
@@ -135,23 +154,23 @@ def find_relevant_tweets(screen_name):
                 if token.startswith("@"):
                     for name, temp_screen_name in politicianScreeNames.iteritems():
                         if token.startswith(temp_screen_name) and temp_screen_name != screen_name:
-                            relevant = True
-            if relevant:
-                relevant_tweets.append(tokens)
-                relevant = False
+                            mention = True
+            if mention:
+                mention_tweets.append((row[0], float(row[3]) + float(row[4]), tokens))
+                mention = False
 
-    return relevant_tweets
+    return mention_tweets
 
-def strip_relevant_tweets(relevant_tweets):
+def strip_tweets(relevant_tweets):
     stripped_relevant_tweets = []
-    for relevant_tweet in relevant_tweets:
+    for id_num, ranking, relevant_tweet in relevant_tweets:
         stripped_relevant_tweet = []
         for token in relevant_tweet:
             if not token.startswith("@") and "https" not in token:
                 token = token.replace(",", "")
                 token = token.replace(".", "")
                 stripped_relevant_tweet.append(token.strip())
-        stripped_relevant_tweets.append(stripped_relevant_tweet)
+        stripped_relevant_tweets.append((id_num, ranking, stripped_relevant_tweet))
     return stripped_relevant_tweets
 
 
@@ -239,9 +258,10 @@ if __name__ == '__main__':
     populate_positive_words()
     populate_negative_words()
     relevant_tweets = find_relevant_tweets("@BernieSanders")
-    stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
+    #print relevant_tweets
+    stripped_relevant_tweets = strip_tweets(relevant_tweets)
     sentiments = []
-    for tweet in stripped_relevant_tweets:
+    for id_num, ranking, tweet in stripped_relevant_tweets:
         sentence = form_sentence(tweet).decode('utf-8')
         textblob = TextBlob(sentence)
         sentiment = textblob.sentiment.polarity
