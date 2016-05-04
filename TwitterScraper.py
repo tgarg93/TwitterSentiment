@@ -8,6 +8,7 @@ import time
 import itertools
 import copy
 from textblob import TextBlob
+import numpy as np
 
 credentials = json.loads(open("credentials.json").read())
 
@@ -238,15 +239,33 @@ if __name__ == '__main__':
     # Populate words
     populate_positive_words()
     populate_negative_words()
-    relevant_tweets = find_relevant_tweets("@BernieSanders")
-    stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
-    sentiments = []
-    for tweet in stripped_relevant_tweets:
-        sentence = form_sentence(tweet).decode('utf-8')
-        textblob = TextBlob(sentence)
-        sentiment = textblob.sentiment.polarity
-        sentiments.append([sentence, sentiment])
-    ranked_sentiments = sorted(sentiments, key=lambda x: x[1])
-    print ranked_sentiments
+
+    for name, screen_name in politicianScreeNames.iteritems():
+        relevant_tweets = find_relevant_tweets(screen_name)
+        stripped_relevant_tweets = strip_relevant_tweets(relevant_tweets)
+
+        tweet_sentiments = []
+        for tweet in stripped_relevant_tweets:
+            sentence = form_sentence(tweet).decode('utf-8')
+            textblob = TextBlob(sentence)
+            sentiment = textblob.sentiment.polarity
+            tweet_sentiments.append([sentence, sentiment])
+        ranked_tweet_sentiments = sorted(tweet_sentiments, key=lambda x: x[1])
+        sentiments = [y for [x, y] in ranked_tweet_sentiments]
+
+        if len(sentiments) != 0:
+            avg_sentiment = np.mean(sentiments)
+            std_dev_sentiment = np.std(sentiments)
+            perct_negative = 0
+            for sentiment in sentiments:
+                if sentiment < 0:
+                    perct_negative += 1
+            perct_negative /= len(sentiments)
+
+            print screen_name
+            print "Average Sentiment: ", avg_sentiment
+            print "Std Dev of Sentiment: ", std_dev_sentiment
+            print "% Tweets with Negative Sentiment: ", perct_negative
+    #print ranked_tweet_sentiments
 
     #compute_sentiment_score(stripped_relevant_tweets)
