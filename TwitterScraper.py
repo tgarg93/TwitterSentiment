@@ -39,6 +39,8 @@ pol_rank = dict()
 # Ranking of tweets
 tweet_rank = dict()
 
+# Ranking of combined
+combined_rank = dict()
 
 positive_words = []
 negative_words = []
@@ -281,10 +283,11 @@ def rank_and_sentiment_tweets(politicians):
 def combine_pol_and_tweet_rank(politicians):
     for politician in politicians:
         pol_rank[politician]
-        tweet_rank[politician]["NEUTRAL"] = tweet_rank[politician]["NEUTRAL"] * pol_rank[politician]
-        tweet_rank[politician]["NEGATIVE"] = tweet_rank[politician]["NEGATIVE"] * pol_rank[politician]
-        tweet_rank[politician]["POSITIVE"] = tweet_rank[politician]["POSITIVE"] * pol_rank[politician]
-
+        combined_rank[politician] = dict()
+        combined_rank[politician]["NEUTRAL"] = tweet_rank[politician]["NEUTRAL"] * pol_rank[politician]
+        combined_rank[politician]["NEGATIVE"] = tweet_rank[politician]["NEGATIVE"] * pol_rank[politician]
+        combined_rank[politician]["POSITIVE"] = tweet_rank[politician]["POSITIVE"] * pol_rank[politician]
+    return combined_rank
 
 if __name__ == '__main__':
     populatePresidentialCandidates()
@@ -304,8 +307,6 @@ if __name__ == '__main__':
     populate_negative_words()
 
     rank_and_sentiment_tweets(politicians)
-    combine_pol_and_tweet_rank(politicians)
-
-    print tweet_rank
+    print combine_pol_and_tweet_rank(politicians)
 
     #compute_sentiment_score(stripped_relevant_tweets)
