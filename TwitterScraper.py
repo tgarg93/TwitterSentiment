@@ -8,6 +8,9 @@ import time
 import itertools
 import copy
 from textblob import TextBlob
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn import datasets, linear_model
 
 credentials = json.loads(open("credentials.json").read())
 
@@ -44,6 +47,8 @@ combined_rank = dict()
 
 positive_words = []
 negative_words = []
+
+sentiment_statistics = dict()
 
 def populatePresidentialCandidates():
     # Republican candidates
@@ -207,25 +212,37 @@ def compute_sentiment_score(stripped_relevant_tweets):
                 sentiment_score -= 2
         print stripped_relevant_tweet, sentiment_score
 
+def scrape_friendships(politicians):
+    with open('pol_friendship.csv', 'wb') as output:
+        writer = csv.writer(output)
+        writer.writerow(["Source Screen Name", "Target Screen Name", "Following", "Followed By"])
+        pairwise_pol = itertools.combinations(politicians, 2)
+        for pol_a, pol_b in pairwise_pol:
+
+            friendship = api.show_friendship(source_screen_name=pol_a,
+                target_screen_name=pol_b)
+            writer.writerow([pol_a, pol_b, friendship[0].following, friendship[0].followed_by])
 
 def create_map(politicians):
-    pairwise_pol = itertools.combinations(politicians, 2)
-    for pol_a, pol_b in pairwise_pol:
-        print "Checking", pol_a, pol_b
-
-        friendship = api.show_friendship(source_screen_name=pol_a, 
-            target_screen_name=pol_b)
-
-        if friendship[0].following:
-            if pol_a in pol_network:
-                pol_network[pol_a] = pol_network[pol_a] + [pol_b]
-            else:
-                pol_network[pol_a] = [pol_b]
-        if friendship[0].followed_by:
-            if pol_b in pol_network:
-                pol_network[pol_b] = pol_network[pol_b] + [pol_a]
-            else:
-                pol_network[pol_b] = [pol_a]
+    with open('pol_friendship.csv', 'rb') as input:
+        reader = csv.reader(input)
+        reader.next()
+        for row in reader:
+            pol_a = row[0]
+            pol_b = row[1]
+            following = row[2]
+            followed_by = row[3]
+            print "Checking", pol_a, pol_b
+            if following:
+                if pol_a in pol_network:
+                    pol_network[pol_a] = pol_network[pol_a] + [pol_b]
+                else:
+                    pol_network[pol_a] = [pol_b]
+            if followed_by:
+                if pol_b in pol_network:
+                    pol_network[pol_b] = pol_network[pol_b] + [pol_a]
+                else:
+                    pol_network[pol_b] = [pol_a]
 
 
 def rank_politicians(politicians, iterations, damping):
@@ -257,27 +274,42 @@ def rank_and_sentiment_tweets(politicians):
         results["NEUTRAL"] = [0, 0]
         results["POSITIVE"] = [0, 0]
         results["NEGATIVE"] = [0, 0]
+        sentiment_and_ranking = []
         for s_id, ranking, tweet in stripped_relevant_tweets:
             sentence = form_sentence(tweet).decode('utf-8')
             textblob = TextBlob(sentence)
             sentiment = textblob.sentiment.polarity
+
             if sentiment == 0:
                 results["NEUTRAL"][0] = results["NEUTRAL"][0] + ranking
                 results["NEUTRAL"][1] = results["NEUTRAL"][1] + 1
             elif sentiment < 0:
                 results["NEGATIVE"][0] = results["NEGATIVE"][0] + ranking
                 results["NEGATIVE"][1] = results["NEGATIVE"][1] + 1
+                sentiment_and_ranking.append([sentiment, ranking])
             else:
                 results["POSITIVE"][0] = results["POSITIVE"][0] + ranking
                 results["POSITIVE"][1] = results["POSITIVE"][1] + 1
-            sentiments.append([sentence, sentiment])
-        ranked_sentiments = sorted(sentiments, key=lambda x: x[1])
+                sentiment_and_ranking.append([sentiment, ranking])
+            sentiments.append(sentiment)
+
+        sentiments = np.array(sentiments)
+        avg_sentiment = np.mean(sentiments)
+        std_dev_sentiment = np.std(sentiments)
+        perct_negative = 0
+        for item in sentiments:
+            if item < 0:
+                perct_negative += 1
+        perct_negative /= len(sentiments)
+
+        sentiment_statistics[politician] = [avg_sentiment, std_dev_sentiment, perct_negative]
+
         trim_results = dict()
         trim_results["NEUTRAL"] = results["NEUTRAL"][0] / results["NEUTRAL"][1]
         trim_results["NEGATIVE"] = results["NEGATIVE"][0] / results["NEGATIVE"][1]
         trim_results["POSITIVE"] = results["POSITIVE"][0] / results["POSITIVE"][1]
         tweet_rank[politician] = trim_results
-    return tweet_rank
+    return tweet_rank, sentiment_and_ranking
 
 
 def combine_pol_and_tweet_rank(politicians):
@@ -306,7 +338,52 @@ if __name__ == '__main__':
     populate_positive_words()
     populate_negative_words()
 
-    rank_and_sentiment_tweets(politicians)
-    print combine_pol_and_tweet_rank(politicians)
+    tweet_rank, sentiment_and_rank = rank_and_sentiment_tweets(politicians)
+    combine_pol_and_tweet_rank(politicians)
+    ranked_sentiment_statistics = sorted(sentiment_statistics.items(), key=lambda x: x[1][1])
+    print ranked_sentiment_statistics
 
-    #compute_sentiment_score(stripped_relevant_tweets)
+    # sentiment = [x for x, y in sentiment_and_rank]
+    # rank = np.array([y for x, y in sentiment_and_rank])
+    # rank = rank.reshape(len(rank), 1)
+    #
+    # # Split the data into training/testing sets
+    # rank_train = rank[:-100]
+    # rank_test = rank[-100:]
+    #
+    # # Split the targets into training/testing sets
+    # sentiment_train = sentiment[:-100]
+    # sentiment_test = sentiment[-100:]
+
+    # plt.scatter(rank, sentiment,  color='black')
+    # plt.xlabel("Tweet Popularity Rank")
+    # plt.ylabel("Sentiment Score")
+    # plt.show()
+
+    # Create linear regression object
+    # regr = linear_model.LinearRegression()
+
+    # Fir the model using the training sets
+    # regr.fit(rank_train, sentiment_train)
+
+    # The coefficients
+    # print("Coefficients: ", regr.coef_[0])
+
+    # The mean square error
+    # print("Residual sum of squares: %.2f"
+    #     % np.mean((regr.predict(rank_test) - sentiment_test) ** 2))
+
+    # Explained variance score: 1 is perfect prediction
+    # print('Variance score: %.2f' % regr.score(rank_test, sentiment_test))
+
+    # Plot outputs
+    # plt.scatter(rank_test, sentiment_test,  color='black')
+    # plt.plot(rank_test, regr.predict(rank_test), color='blue', linewidth=3)
+
+    # plt.xticks(())
+    # plt.yticks(())
+
+    # plt.xlabel("Tweet Popularity Rank")
+    # plt.ylabel("Sentiment Score")
+    # plt.show()
+
