@@ -36,6 +36,9 @@ pol_network = dict()
 # Ranking of politicians
 pol_rank = dict()
 
+# Ranking of tweets
+tweet_rank = dict()
+
 
 positive_words = []
 negative_words = []
@@ -244,7 +247,6 @@ def rank_politicians(politicians, iterations, damping):
 
 # Returns average ranking (favs + retweets) for neutral, positive & negative tweets
 def rank_and_sentiment_tweets(politicians):
-    all_results = dict()
     for politician in politicians:
         relevant_tweets = find_relevant_tweets(politician)
         stripped_relevant_tweets = strip_tweets(relevant_tweets)
@@ -272,8 +274,16 @@ def rank_and_sentiment_tweets(politicians):
         trim_results["NEUTRAL"] = results["NEUTRAL"][0] / results["NEUTRAL"][1]
         trim_results["NEGATIVE"] = results["NEGATIVE"][0] / results["NEGATIVE"][1]
         trim_results["POSITIVE"] = results["POSITIVE"][0] / results["POSITIVE"][1]
-        all_results[politician] = trim_results
-    return all_results
+        tweet_rank[politician] = trim_results
+    return tweet_rank
+
+
+def combine_pol_and_tweet_rank(politicians):
+    for politician in politicians:
+        pol_rank[politician]
+        tweet_rank[politician]["NEUTRAL"] = tweet_rank[politician]["NEUTRAL"] * pol_rank[politician]
+        tweet_rank[politician]["NEGATIVE"] = tweet_rank[politician]["NEGATIVE"] * pol_rank[politician]
+        tweet_rank[politician]["POSITIVE"] = tweet_rank[politician]["POSITIVE"] * pol_rank[politician]
 
 
 if __name__ == '__main__':
@@ -286,13 +296,16 @@ if __name__ == '__main__':
 
     # Rank politicians
     politicians = [y for x, y in politicianScreeNames.iteritems()]
-    #create_map(politicians)
-    #print rank_politicians(politicians, 10, 0.85)
+    create_map(politicians)
+    rank_politicians(politicians, 10, 0.85)
 
     # Populate words
     populate_positive_words()
     populate_negative_words()
 
-    print rank_and_sentiment_tweets(politicians)
+    rank_and_sentiment_tweets(politicians)
+    combine_pol_and_tweet_rank(politicians)
+
+    print tweet_rank
 
     #compute_sentiment_score(stripped_relevant_tweets)
