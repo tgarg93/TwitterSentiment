@@ -241,32 +241,58 @@ def rank_politicians(politicians, iterations, damping):
     final_rankings = sorted(pol_rank.items(), key=lambda x: x[1])
     return final_rankings[::-1]
 
+
+# Returns average ranking (favs + retweets) for neutral, positive & negative tweets
+def rank_and_sentiment_tweets(politicians):
+    all_results = dict()
+    for politician in politicians:
+        relevant_tweets = find_relevant_tweets(politician)
+        stripped_relevant_tweets = strip_tweets(relevant_tweets)
+        sentiments = []
+        results = dict()
+        results["NEUTRAL"] = [0, 0]
+        results["POSITIVE"] = [0, 0]
+        results["NEGATIVE"] = [0, 0]
+        for s_id, ranking, tweet in stripped_relevant_tweets:
+            sentence = form_sentence(tweet).decode('utf-8')
+            textblob = TextBlob(sentence)
+            sentiment = textblob.sentiment.polarity
+            if sentiment == 0:
+                results["NEUTRAL"][0] = results["NEUTRAL"][0] + ranking
+                results["NEUTRAL"][1] = results["NEUTRAL"][1] + 1
+            elif sentiment < 0:
+                results["NEGATIVE"][0] = results["NEGATIVE"][0] + ranking
+                results["NEGATIVE"][1] = results["NEGATIVE"][1] + 1
+            else:
+                results["POSITIVE"][0] = results["POSITIVE"][0] + ranking
+                results["POSITIVE"][1] = results["POSITIVE"][1] + 1
+            sentiments.append([sentence, sentiment])
+        ranked_sentiments = sorted(sentiments, key=lambda x: x[1])
+        trim_results = dict()
+        trim_results["NEUTRAL"] = results["NEUTRAL"][0] / results["NEUTRAL"][1]
+        trim_results["NEGATIVE"] = results["NEGATIVE"][0] / results["NEGATIVE"][1]
+        trim_results["POSITIVE"] = results["POSITIVE"][0] / results["POSITIVE"][1]
+        all_results[politician] = trim_results
+    return all_results
+
+
 if __name__ == '__main__':
     populatePresidentialCandidates()
 
     # Find retweets
     #for name, screen_name in politicianScreeNames.iteritems():
-    #    populate_tweets(screen_name)
+        #populate_tweets(screen_name)
     #populate_retweets()
 
     # Rank politicians
-    #politicians = [y for x, y in politicianScreeNames.iteritems()]
+    politicians = [y for x, y in politicianScreeNames.iteritems()]
     #create_map(politicians)
     #print rank_politicians(politicians, 10, 0.85)
 
     # Populate words
     populate_positive_words()
     populate_negative_words()
-    relevant_tweets = find_relevant_tweets("@BernieSanders")
-    #print relevant_tweets
-    stripped_relevant_tweets = strip_tweets(relevant_tweets)
-    sentiments = []
-    for id_num, ranking, tweet in stripped_relevant_tweets:
-        sentence = form_sentence(tweet).decode('utf-8')
-        textblob = TextBlob(sentence)
-        sentiment = textblob.sentiment.polarity
-        sentiments.append([sentence, sentiment])
-    ranked_sentiments = sorted(sentiments, key=lambda x: x[1])
-    print ranked_sentiments
+
+    print rank_and_sentiment_tweets(politicians)
 
     #compute_sentiment_score(stripped_relevant_tweets)
