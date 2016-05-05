@@ -45,6 +45,7 @@ combined_rank = dict()
 positive_words = []
 negative_words = []
 
+# Defines politicians
 def populatePresidentialCandidates():
     # Republican candidates
     politicianScreeNames["Donal Trump"] = "@realDonaldTrump"
@@ -62,9 +63,8 @@ def populatePresidentialCandidates():
     politicianScreeNames["Harry Reid"] = "@SenatorReid"
     politicianScreeNames["Elizabeth Warren"] = "@SenWarren"
     politicianScreeNames["Mitch McConnell"] = "@McConnellPress"
-    politicianScreeNames["Harry Reid"] = "@SenatorReid"
 
-
+# Populates tweets
 def populate_tweets(screen_name):
     tweets = []
 
@@ -99,17 +99,16 @@ def populate_tweets(screen_name):
         writer.writerows(transformed_tweets)
     pass
 
-def populate_retweets():
+# NOT USED: Populates retweets from one politician to another
+def populate_retweets(pol_a, pol_b):
     with open('retweetMapping.csv', 'a') as output:
         writer = csv.writer(output)
-        #writer.writerow(["Author", "Retweeter"])
-        for screen_name in ["@SenatorReid", "@SenWarren"]:
+        for screen_name in [pol_a, pol_b]:
             with open('%s_tweets.csv' % screen_name, 'rb') as input:
                 reader = csv.reader(input)
                 reader.next()
                 for row in reader:
                     id = row[0]
-                    # TODO: Figure out how to get more than just 100 retweets (limit for API call)
                     try:
                         print "Back to getting retweets"
                         time.sleep(11)
@@ -125,6 +124,7 @@ def populate_retweets():
 
     pass
 
+# Removes retweets from a politician's tweet corpus
 def find_relevant_tweets(screen_name):
     relevant_tweets = []
     with open('%s_tweets.csv' % screen_name, 'rb') as input:
@@ -143,7 +143,7 @@ def find_relevant_tweets(screen_name):
 
     return relevant_tweets
 
-
+# NOT USED: Finds only tweets that mention other candidates
 def find_mention_tweets(screen_name):
     mention_tweets = []
     with open('%s_tweets.csv' % screen_name, 'rb') as input:
@@ -166,6 +166,7 @@ def find_mention_tweets(screen_name):
 
     return mention_tweets
 
+# Cleans tweets to remove mentions and links
 def strip_tweets(relevant_tweets):
     stripped_relevant_tweets = []
     for id_num, ranking, relevant_tweet in relevant_tweets:
@@ -178,25 +179,26 @@ def strip_tweets(relevant_tweets):
         stripped_relevant_tweets.append((id_num, ranking, stripped_relevant_tweet))
     return stripped_relevant_tweets
 
-
+# NOT USED: initializes dictionary of positive words
 def populate_positive_words():
     with open('positive-words.txt', 'rb') as input:
         for line in input:
             positive_words.append(line.strip())
 
-
+# NOT USED: initializes dictionary of negative words
 def populate_negative_words():
     with open('negative-words.txt', 'rb') as input:
         for line in input:
             negative_words.append(line.strip())
 
+# Creates a string with a list of tokens
 def form_sentence(tokens):
     sentence = ""
     for token in tokens:
         sentence += " " + token
     return sentence
 
-
+# NOT USED: Computes sentiment score without POS tagging
 def compute_sentiment_score(stripped_relevant_tweets):
     for stripped_relevant_tweet in stripped_relevant_tweets:
         sentiment_score = 0
@@ -207,7 +209,7 @@ def compute_sentiment_score(stripped_relevant_tweets):
                 sentiment_score -= 2
         print stripped_relevant_tweet, sentiment_score
 
-
+# Creates a map of follow relationships among politicians
 def create_map(politicians):
     pairwise_pol = itertools.combinations(politicians, 2)
     for pol_a, pol_b in pairwise_pol:
@@ -227,7 +229,7 @@ def create_map(politicians):
             else:
                 pol_network[pol_b] = [pol_a]
 
-
+# Ranks politicians on the created map using PageRank
 def rank_politicians(politicians, iterations, damping):
     for x in politicians:
         pol_rank[x] = 1
@@ -245,7 +247,6 @@ def rank_politicians(politicians, iterations, damping):
 
     final_rankings = sorted(pol_rank.items(), key=lambda x: x[1])
     return final_rankings[::-1]
-
 
 # Returns average ranking (favs + retweets) for neutral, positive & negative tweets
 def rank_and_sentiment_tweets(politicians):
@@ -279,7 +280,7 @@ def rank_and_sentiment_tweets(politicians):
         tweet_rank[politician] = trim_results
     return tweet_rank
 
-
+# Computes final Tweet Popularity Score
 def combine_pol_and_tweet_rank(politicians):
     for politician in politicians:
         pol_rank[politician]
@@ -292,21 +293,14 @@ def combine_pol_and_tweet_rank(politicians):
 if __name__ == '__main__':
     populatePresidentialCandidates()
 
-    # Find retweets
+    # Find retweets [No need to uncomment if .csv files are included]
     #for name, screen_name in politicianScreeNames.iteritems():
         #populate_tweets(screen_name)
-    #populate_retweets()
 
     # Rank politicians
     politicians = [y for x, y in politicianScreeNames.iteritems()]
     create_map(politicians)
     rank_politicians(politicians, 10, 0.85)
 
-    # Populate words
-    populate_positive_words()
-    populate_negative_words()
-
     rank_and_sentiment_tweets(politicians)
     print combine_pol_and_tweet_rank(politicians)
-
-    #compute_sentiment_score(stripped_relevant_tweets)
